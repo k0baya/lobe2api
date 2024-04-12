@@ -132,50 +132,70 @@ async function handleChatCompletion(req, res) {
 
     const JWT = createJWT();
 
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
+    if (!req.body.stream) {
+      const response = await axiosInstance.post(apiUrl, body, {
+        responseType: "stream",
+        headers: {
+          "x-lobe-chat-auth": JWT,
+          "Content-Type": "application/json",
+        },
+      });
 
-    const response = await axiosInstance.post(apiUrl, body, {
-      responseType: "stream",
-      headers: {
-        "x-lobe-chat-auth": JWT,
-        "Content-Type": "application/json",
-      },
-    });
+      let fullContent = "";
 
-    let fullContent = "";
-    let requestId = GenerateCompletionId("chatcmpl-");
-    let created = Date.now();
+      for await (const chunk of response.data) {
+        fullContent += chunk.toString();
+      }
 
-    // Stream processing
-    for await (const chunk of response.data) {
-      const chunkStr = chunk.toString();
-      console.log("Chunk received:", chunkStr);
-      fullContent += chunkStr; // Accumulate the content
+      res.json({
+        status: true,
+        content: fullContent,
+      });
+    } else {
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
 
-      const responsePayload = {
-        id: requestId,
-        created: created,
-        object: "chat.completion.chunk",
-        model: req.body.model || "gpt-3.5-turbo",
-        choices: [
-          {
-            delta: {
-              content: chunkStr,
+      const response = await axiosInstance.post(apiUrl, body, {
+        responseType: "stream",
+        headers: {
+          "x-lobe-chat-auth": JWT,
+          "Content-Type": "application/json",
+        },
+      });
+
+      let fullContent = "";
+      let requestId = GenerateCompletionId("chatcmpl-");
+      let created = Date.now();
+
+      // Stream processing
+      for await (const chunk of response.data) {
+        const chunkStr = chunk.toString();
+        fullContent += chunkStr; // Accumulate the content
+
+        const responsePayload = {
+          id: requestId,
+          created: created,
+          object: "chat.completion.chunk",
+          model: req.body.model || "gpt-3.5-turbo",
+          choices: [
+            {
+              delta: {
+                content: chunkStr,
+              },
+              index: 0,
+              finish_reason: null,
             },
-            index: 0,
-            finish_reason: null,
-          },
-        ],
-      };
-      res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
-    }
+          ],
+        };
+        res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
+      }
 
-    res.write(`event: end\ndata: {}\n\n`);
-    res.end();
+      //      res.write(`event: end\ndata: {}\n\n`);
+      res.end();
+    }
   } catch (error) {
     console.error("Error handling chat completion:", error);
     if (!res.headersSent) {
