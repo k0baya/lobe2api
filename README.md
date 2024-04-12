@@ -11,6 +11,12 @@ Welcome to the lobe2api, offering free self-hosted API access to lobe-chat with 
 
 1. Edit the `.env` file, add variables such as `PORT` 、 `BASE_URL` 、 `AUTH_TOKEN` .
 
+|Key|Default Value|Note|
+|-|-|-|
+|`PORT`|`3000`|Port that lobe2api listens on|
+|`BASE_URL`|`http://localhost:1234`|That lobe-chat url that you need to reverse|
+|`AUTH_TOKEN`||Authentication for your lobe2api|
+|`ACCESS_CODE`||The access code for the lobe-chat url that you need to reverse|
 2. Run the following command:
    ```bash
    npm install
