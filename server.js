@@ -126,32 +126,53 @@ async function handleChatCompletion(req, res) {
       top_p: 1,
       messages: req.body.messages.map((message) => ({
         content: message.content,
-        role: message.role,
+        role: message.role === 'system' ? 'user' : message.role,
       })),
     };
 
     const JWT = createJWT();
 
     if (!req.body.stream) {
-      const response = await axiosInstance.post(apiUrl, body, {
-        responseType: "stream",
-        headers: {
-          "x-lobe-chat-auth": JWT,
-          "Content-Type": "application/json",
+  const response = await axiosInstance.post(apiUrl, body, {
+    responseType: "stream",
+    headers: {
+      "x-lobe-chat-auth": JWT,
+      "Content-Type": "application/json",
+    },
+  });
+
+  let fullContent = "";
+  let requestId = GenerateCompletionId("chatcmpl-");
+  let created = Date.now();
+
+  for await (const chunk of response.data) {
+    fullContent += chunk.toString();
+  }
+
+    const returnMessage = {
+    id: requestId, 
+    created: created, 
+    model: req.body.model || "gpt-3.5-turbo",
+    object: "chat.completion",
+    choices: [
+      {
+        finish_reason: "stop",
+        index: 0,
+        message: {
+          content: fullContent, 
+          role: "assistant", 
         },
-      });
-
-      let fullContent = "";
-
-      for await (const chunk of response.data) {
-        fullContent += chunk.toString();
-      }
-
-      res.json({
-        status: true,
-        content: fullContent,
-      });
-    } else {
+      },
+    ],
+    usage: {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    },
+  };
+  console.log(returnMessage.choices);
+  res.json(returnMessage);
+} else {
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -173,6 +194,7 @@ async function handleChatCompletion(req, res) {
       // Stream processing
       for await (const chunk of response.data) {
         const chunkStr = chunk.toString();
+        // console.log("Chunk received:", chunkStr);
         fullContent += chunkStr; // Accumulate the content
 
         const responsePayload = {
@@ -190,6 +212,7 @@ async function handleChatCompletion(req, res) {
             },
           ],
         };
+        console.log(responsePayload.choices);
         res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
       }
 
@@ -239,3 +262,4 @@ app.listen(port, () => {
     `🔗 ChatCompletion Endpoint: http://localhost:${port}/v1/chat/completions`,
   );
 });
+
