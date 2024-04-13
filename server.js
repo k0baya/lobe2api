@@ -240,6 +240,10 @@ const app = express();
 app.use(bodyParser.json());
 app.use(enableCORS);
 
+app.get("/", function (req, res) {
+  res.type("html").send("<pre>Powered by lobe2api\nAuthor: <a href='https://github.com/k0baya'>K0baya</a>" + "</pre>");
+  });
+
 // Route to handle POST requests for chat completions
 app.post("/v1/chat/completions", authMiddleware, handleChatCompletion);
 
