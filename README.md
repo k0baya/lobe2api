@@ -9,19 +9,45 @@ Welcome to the lobe2api, offering free self-hosted API access to lobe-chat with 
 
 ## Installing/Self-Hosting Guide
 
+### Using docker
+
+1. Ensure Docker is installed by referring to the [Docker Installation Docs](https://docs.docker.com/engine/install/).
+
+2. Clone repository
+   ```bash
+   git clone https://github.com/k0baya/lobe2api.git && cd lobe2api
+   ```
+
+3. Edit the `.env` file.
+
+4. Run the following command:
+   ```bash
+   docker compose up -d
+   ```
+
+5. Done! You can now connect to your local server's API at:
+   ```
+   http://localhost:3000/v1/chat/completions
+   ```
+   Note that the base URL is `http://localhost:PORT/v1`.
+
+### From source code
+
 1. Edit the `.env` file, add variables such as `PORT` 、 `BASE_URL` 、 `AUTH_TOKEN` .
 
-|Key|Default Value|Note|
-|-|-|-|
-|`PORT`|`3000`|Port that lobe2api listens on|
-|`BASE_URL`|`http://localhost:1234`|That lobe-chat url that you need to reverse|
-|`AUTH_TOKEN`||Authentication for your lobe2api|
-|`ACCESS_CODE`||The access code for the lobe-chat url that you need to reverse|
+   |Key|Default Value|Note|
+   |-|-|-|
+   |`PORT`|`3000`|Port that lobe2api listens on|
+   |`BASE_URL`|`http://localhost:1234`|That lobe-chat url that you need to reverse|
+   |`AUTH_TOKEN`||Authentication for your lobe2api|
+   |`ACCESS_CODE`||The access code for the lobe-chat url that you need to reverse|
+
 2. Run the following command:
    ```bash
    npm install
    npm run start
    ```
+
 3. Done! You can now connect to your local server's API at:
    ```
    http://localhost:PORT/v1/chat/completions
