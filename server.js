@@ -133,27 +133,30 @@ async function handleChatCompletion(req, res) {
   console.log(fullContent);
 
     const returnMessage = {
+    id: requestId, 
+    object: "chat.completion",
+    created: created, 
+    model: req.body.model || "gpt-3.5-turbo",
     choices: [
       {
-        finish_reason: "stop",
         index: 0,
-        logprobs: 0,
         message: {
-          content: fullContent, 
           role: "assistant", 
+          content: fullContent, 
+        },
+        logprobs: 0,
+        finish_reason: "stop",
+        delta: {
+          content:"",
         },
       },
     ],
-    created: created, 
-    id: requestId, 
-    model: req.body.model || "gpt-3.5-turbo",
-    object: "chat.completion",
-    system_fingerprint: 0,
     usage: {
       prompt_tokens: 0,
       completion_tokens: 0,
       total_tokens: 0,
     },
+    system_fingerprint: 0,
   };
   console.log(returnMessage.choices);
   res.json(returnMessage);
@@ -190,21 +193,29 @@ async function handleChatCompletion(req, res) {
         if (dataContent) {
           const responsePayload = {
             id: requestId,
-            choices: [
-              {
-                delta: {
-                  content: dataContent,
-                  role: "assistant", 
-                  finish_reason: null,
-                  logprobs: 0,
-                },
-                index: 0,
-              },
-            ],
+            object: "chat.completion.chunk",
             created: created,
             model: req.body.model || "gpt-3.5-turbo",
-            system_fingerprint: 0,
-            object: "chat.completion.chunk",
+            choices: [
+              {
+                index: 0,
+                message: {
+                  role: "assistant", 
+                  content: dataContent,
+                },
+                logprobs: 0,
+                finish_reason: null,
+                delta: {
+                  content: dataContent,
+                },
+              },
+            ],
+            usage: {
+              prompt_tokens: 0,
+              completion_tokens: 0,
+              total_tokens: 0,
+              },
+                system_fingerprint: 0,
           };
           console.log(responsePayload.choices);
           res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
