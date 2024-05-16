@@ -106,36 +106,49 @@ async function handleChatCompletion(req, res) {
 
     if (!req.body.stream) {
   const response = await axiosInstance.post(apiUrl, body, {
-    responseType: "stream",
+    responseType: 'stream',
     headers: {
-      "x-lobe-chat-auth": JWT,
-      "Content-Type": "application/json",
+      'x-lobe-chat-auth': JWT,
+      'Content-Type': 'application/json',
     },
   });
-
-  let fullContent = "";
-  let requestId = GenerateCompletionId("chatcmpl-");
+  let fullContent = '';
+  let requestId = GenerateCompletionId('chatcmpl-');
   let created = Date.now();
-
   for await (const chunk of response.data) {
-    fullContent += chunk.toString();
+    const lines = chunk.toString().split('\n');
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const dataContent = line.substring(6).trim(); // "6" is the length of "data: "
+      // try to parse the dataContent JSON string, and remove the quotes
+        try {
+          const parsedData = JSON.parse(dataContent);
+          fullContent += parsedData;
+        } catch (e) {
+          console.error('Error parsing dataContent:', e);
+        }
+      }
+    }
   }
+  console.log(fullContent);
 
     const returnMessage = {
-    id: requestId, 
-    created: created, 
-    model: req.body.model || "gpt-3.5-turbo",
-    object: "chat.completion",
     choices: [
       {
         finish_reason: "stop",
         index: 0,
+        logprobs: 0,
         message: {
           content: fullContent, 
           role: "assistant", 
         },
       },
     ],
+    created: created, 
+    id: requestId, 
+    model: req.body.model || "gpt-3.5-turbo",
+    object: "chat.completion",
+    system_fingerprint: 0,
     usage: {
       prompt_tokens: 0,
       completion_tokens: 0,
@@ -163,32 +176,40 @@ async function handleChatCompletion(req, res) {
       let requestId = GenerateCompletionId("chatcmpl-");
       let created = Date.now();
 
-      // Stream processing
       for await (const chunk of response.data) {
         const chunkStr = chunk.toString();
-        // console.log("Chunk received:", chunkStr);
-        fullContent += chunkStr; // Accumulate the content
-
-        const responsePayload = {
-          id: requestId,
-          created: created,
-          object: "chat.completion.chunk",
-          model: req.body.model || "gpt-3.5-turbo",
-          choices: [
-            {
-              delta: {
-                content: chunkStr,
+        let dataContent = "";
+        const lines = chunkStr.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataFieldContent = line.substring(6).trim();
+            const unquotedContent = dataFieldContent.replace(/^\"|\"$/g, '');
+            dataContent += unquotedContent;
+          }
+        }
+        if (dataContent) {
+          const responsePayload = {
+            id: requestId,
+            choices: [
+              {
+                delta: {
+                  content: dataContent,
+                  role: "assistant", 
+                  finish_reason: null,
+                  logprobs: 0,
+                },
+                index: 0,
               },
-              index: 0,
-              finish_reason: null,
-            },
-          ],
-        };
-        console.log(responsePayload.choices);
-        res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
+            ],
+            created: created,
+            model: req.body.model || "gpt-3.5-turbo",
+            system_fingerprint: 0,
+            object: "chat.completion.chunk",
+          };
+          console.log(responsePayload.choices);
+          res.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
+        }
       }
-
-      //      res.write(`event: end\ndata: {}\n\n`);
       res.end();
     }
   } catch (error) {
@@ -238,4 +259,3 @@ app.listen(port, () => {
     `🔗 ChatCompletion Endpoint: http://localhost:${port}/v1/chat/completions`,
   );
 });
-
